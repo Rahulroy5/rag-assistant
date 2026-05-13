@@ -249,7 +249,7 @@ with st.sidebar:
     st.markdown("<div style='color:#8b949e; font-size:0.8rem; font-weight:600; margin-bottom:0.6rem;'>MODELS</div>", unsafe_allow_html=True)
     st.markdown("""
     <div>
-        <span class='model-badge'>🔍 all-MiniLM-L6-v2</span>
+        <span class='model-badge'>🔍 bge-small-en-v1.5</span>
         <span class='model-badge'>🧠 Claude Haiku</span>
         <span class='model-badge'>🗄️ ChromaDB</span>
     </div>

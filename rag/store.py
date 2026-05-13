@@ -2,25 +2,24 @@ from typing import List
 
 import chromadb
 from chromadb import EmbeddingFunction, Embeddings
-from sentence_transformers import SentenceTransformer
+from fastembed import TextEmbedding
 
 from models import Chunk
 
-_embedder: SentenceTransformer | None = None
+_embedder: TextEmbedding | None = None
 
 
-def _get_embedder() -> SentenceTransformer:
+def _get_embedder() -> TextEmbedding:
     global _embedder
     if _embedder is None:
-        _embedder = SentenceTransformer("all-MiniLM-L6-v2")
+        _embedder = TextEmbedding("BAAI/bge-small-en-v1.5")
     return _embedder
 
 
 class LocalEmbedder(EmbeddingFunction):
     def __call__(self, input: List[str]) -> Embeddings:
         model = _get_embedder()
-        vectors = model.encode(input, normalize_embeddings=True)
-        return vectors.tolist()
+        return [v.tolist() for v in model.embed(input)]
 
 
 def get_fresh_collection(client: chromadb.Client, collection_name: str = "rag_docs"):

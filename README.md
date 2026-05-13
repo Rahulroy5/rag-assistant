@@ -22,7 +22,7 @@ MarkItDown            →  Extracts text from PDF into clean markdown
 Chunker               →  Splits text into 500-word overlapping chunks
    │
    ▼
-all-MiniLM-L6-v2      →  Embeds each chunk into a 384-dim vector (runs locally, free)
+bge-small-en-v1.5     →  Embeds each chunk into a 384-dim vector (ONNX, free, fast)
    │
    ▼
 ChromaDB              →  Stores vectors, retrieves top-3 by cosine similarity
@@ -53,7 +53,7 @@ Streamlit UI          →  Displays answer with collapsible source chunks
 |----------------|---------------------------------------------|
 | Frontend       | Streamlit                                   |
 | PDF Parser     | MarkItDown (Microsoft)                      |
-| Embeddings     | `all-MiniLM-L6-v2` via sentence-transformers|
+| Embeddings     | `bge-small-en-v1.5` via fastembed (ONNX)    |
 | Vector Store   | ChromaDB (in-memory, cosine similarity)     |
 | LLM            | Claude Haiku via Anthropic API              |
 | Data Validation| Pydantic v2                                 |
