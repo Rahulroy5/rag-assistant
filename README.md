@@ -1,10 +1,10 @@
 # PDF Q&A Assistant
 
-Upload any PDF and ask questions in plain English. Powered by Claude — no installation, no local models, works instantly in any browser.
+Upload any PDF and ask questions in plain English. Powered by Gemini — completely free, no installation, works instantly in any browser.
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?style=flat-square&logo=python)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.30%2B-red?style=flat-square&logo=streamlit)
-![Claude](https://img.shields.io/badge/Claude-Haiku-orange?style=flat-square)
+![Gemini](https://img.shields.io/badge/Gemini-1.5%20Flash-blue?style=flat-square&logo=google)
 ![ChromaDB](https://img.shields.io/badge/ChromaDB-vector%20store-purple?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
 
@@ -22,13 +22,13 @@ MarkItDown            →  Extracts text from PDF into clean markdown
 Chunker               →  Splits text into 500-word overlapping chunks
    │
    ▼
-bge-small-en-v1.5     →  Embeds each chunk into a 384-dim vector (ONNX, free, fast)
+bge-small-en-v1.5     →  Embeds each chunk into a 384-dim vector (ONNX, free, no API)
    │
    ▼
 ChromaDB              →  Stores vectors, retrieves top-3 by cosine similarity
    │
    ▼
-Claude Haiku          →  Generates an answer grounded in retrieved context
+Gemini 1.5 Flash      →  Generates an answer grounded in retrieved context
    │
    ▼
 Streamlit UI          →  Displays answer with collapsible source chunks
@@ -38,9 +38,9 @@ Streamlit UI          →  Displays answer with collapsible source chunks
 
 ## Features
 
-- **No installation** — works in the browser, deploy to Render in one click
-- **One API key** — only needs an Anthropic API key, nothing else
-- **Free embeddings** — `all-MiniLM-L6-v2` runs on CPU, no cost, no rate limits
+- **Completely free** — Gemini API has a free tier, no credit card needed
+- **No installation** — deploy to Streamlit Community Cloud in minutes
+- **Free embeddings** — `bge-small-en-v1.5` runs on CPU via ONNX, no cost
 - **Source transparency** — every answer shows the exact chunks the model used
 - **Chat interface** — persistent Q&A history within a session
 - **Clean UI** — dark-themed Streamlit app with sidebar document management
@@ -49,25 +49,29 @@ Streamlit UI          →  Displays answer with collapsible source chunks
 
 ## Tech Stack
 
-| Component      | Tool                                        |
-|----------------|---------------------------------------------|
-| Frontend       | Streamlit                                   |
-| PDF Parser     | MarkItDown (Microsoft)                      |
-| Embeddings     | `bge-small-en-v1.5` via fastembed (ONNX)    |
-| Vector Store   | ChromaDB (in-memory, cosine similarity)     |
-| LLM            | Claude Haiku via Anthropic API              |
-| Data Validation| Pydantic v2                                 |
+| Component       | Tool                                      |
+|-----------------|-------------------------------------------|
+| Frontend        | Streamlit                                 |
+| PDF Parser      | MarkItDown (Microsoft)                    |
+| Embeddings      | `bge-small-en-v1.5` via fastembed (ONNX)  |
+| Vector Store    | ChromaDB (in-memory, cosine similarity)   |
+| LLM             | Gemini 1.5 Flash (free tier)              |
+| Data Validation | Pydantic v2                               |
 
 ---
 
-## Deploy to Render (free, public URL)
+## Deploy (free, public URL)
 
-1. Fork this repo on GitHub
-2. Go to [render.com](https://render.com) → New → Web Service → connect your fork
-3. Render auto-detects `render.yaml` — click Deploy
-4. Done. You get a public URL anyone can open.
+**Streamlit Community Cloud:**
+1. Fork this repo
+2. Go to [share.streamlit.io](https://share.streamlit.io) → New app → select your fork
+3. Advanced settings → Secrets → add:
+   ```toml
+   GOOGLE_API_KEY = "AIza..."
+   ```
+4. Deploy — get a public URL in ~2 minutes
 
-No API key is hardcoded — users enter their own key in the sidebar.
+Get a free Gemini API key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) — no credit card required.
 
 ---
 
@@ -82,7 +86,7 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-Open **http://localhost:8501**, enter your Anthropic API key in the sidebar, upload a PDF, and start asking questions.
+Open **http://localhost:8501**, enter your Gemini API key in the sidebar, upload a PDF, and start asking questions.
 
 ---
 
@@ -93,12 +97,13 @@ rag-assistant/
 ├── app.py              # Streamlit UI — upload, chat, API key input, session state
 ├── models.py           # Pydantic schemas (Chunk, QueryResult)
 ├── requirements.txt
-├── render.yaml         # One-click Render deployment config
+├── render.yaml         # Render deployment config
+├── Dockerfile          # HuggingFace Spaces deployment config
 └── rag/
     ├── parser.py       # MarkItDown: PDF → markdown text
     ├── chunker.py      # Split text into overlapping word chunks
     ├── store.py        # ChromaDB: embed, store, and retrieve chunks
-    └── llm.py          # Claude: generate answer from retrieved context
+    └── llm.py          # Gemini: generate answer from retrieved context
 ```
 
 ---
@@ -107,4 +112,3 @@ rag-assistant/
 
 - Scanned / image-based PDFs are not supported (no OCR)
 - In-memory ChromaDB — indexed documents reset on app restart
-- Requires an Anthropic API key (free tier available at console.anthropic.com)

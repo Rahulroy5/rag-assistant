@@ -5,7 +5,7 @@ import tempfile
 import chromadb
 import streamlit as st
 
-ANTHROPIC_API_KEY_ENV = os.getenv("ANTHROPIC_API_KEY", "")
+ANTHROPIC_API_KEY_ENV = os.getenv("GOOGLE_API_KEY", "")
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -184,17 +184,17 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     st.markdown("---")
-    st.markdown("<div style='color:#8b949e; font-size:0.8rem; font-weight:600; margin-bottom:0.5rem;'>ANTHROPIC API KEY</div>", unsafe_allow_html=True)
+    st.markdown("<div style='color:#8b949e; font-size:0.8rem; font-weight:600; margin-bottom:0.5rem;'>GOOGLE GEMINI API KEY</div>", unsafe_allow_html=True)
     api_key_input = st.text_input(
         "API Key",
         value=ANTHROPIC_API_KEY_ENV,
         type="password",
-        placeholder="sk-ant-...",
+        placeholder="AIza...",
         label_visibility="collapsed",
     )
     api_key = api_key_input.strip()
     if not api_key:
-        st.warning("Enter your [Anthropic API key](https://console.anthropic.com/) to get started.", icon="🔑")
+        st.warning("Enter your free [Gemini API key](https://aistudio.google.com/apikey) to get started.", icon="🔑")
 
     st.markdown("---")
     st.markdown("<div style='color:#8b949e; font-size:0.8rem; font-weight:600; margin-bottom:0.5rem;'>UPLOAD DOCUMENT</div>", unsafe_allow_html=True)
@@ -250,7 +250,7 @@ with st.sidebar:
     st.markdown("""
     <div>
         <span class='model-badge'>🔍 bge-small-en-v1.5</span>
-        <span class='model-badge'>🧠 Claude Haiku</span>
+        <span class='model-badge'>🧠 Gemini 1.5 Flash</span>
         <span class='model-badge'>🗄️ ChromaDB</span>
     </div>
     """, unsafe_allow_html=True)
