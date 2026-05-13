@@ -1,19 +1,26 @@
 from typing import List
 
 import chromadb
-import ollama
 from chromadb import EmbeddingFunction, Embeddings
+from sentence_transformers import SentenceTransformer
 
 from models import Chunk
 
+_embedder: SentenceTransformer | None = None
 
-class OllamaEmbedder(EmbeddingFunction):
-    def __init__(self, model: str = "nomic-embed-text"):
-        self.model = model
 
+def _get_embedder() -> SentenceTransformer:
+    global _embedder
+    if _embedder is None:
+        _embedder = SentenceTransformer("all-MiniLM-L6-v2")
+    return _embedder
+
+
+class LocalEmbedder(EmbeddingFunction):
     def __call__(self, input: List[str]) -> Embeddings:
-        response = ollama.embed(model=self.model, input=input)
-        return response.embeddings
+        model = _get_embedder()
+        vectors = model.encode(input, normalize_embeddings=True)
+        return vectors.tolist()
 
 
 def get_fresh_collection(client: chromadb.Client, collection_name: str = "rag_docs"):
@@ -23,7 +30,7 @@ def get_fresh_collection(client: chromadb.Client, collection_name: str = "rag_do
         pass
     return client.create_collection(
         name=collection_name,
-        embedding_function=OllamaEmbedder(),
+        embedding_function=LocalEmbedder(),
         metadata={"hnsw:space": "cosine"},
     )
 
@@ -36,6 +43,6 @@ def add_chunks(collection, chunks: List[Chunk]) -> None:
     )
 
 
-def retrieve(collection, question: str, n_results: int = 2) -> List[str]:
+def retrieve(collection, question: str, n_results: int = 3) -> List[str]:
     results = collection.query(query_texts=[question], n_results=n_results)
     return results["documents"][0]
