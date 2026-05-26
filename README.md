@@ -1,114 +1,145 @@
-# PDF Q&A Assistant
+# PDF Q&A Assistant — Fully Local RAG
 
-Upload any PDF and ask questions in plain English. Powered by Gemini — completely free, no installation, works instantly in any browser.
+A lightweight, fully local Retrieval-Augmented Generation (RAG) system for PDF document Q&A. Built end-to-end with open-source tools — no API keys, no cloud calls, your documents never leave your machine.
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?style=flat-square&logo=python)
-![Streamlit](https://img.shields.io/badge/Streamlit-1.30%2B-red?style=flat-square&logo=streamlit)
-![Gemini](https://img.shields.io/badge/Gemini-1.5%20Flash-blue?style=flat-square&logo=google)
-![ChromaDB](https://img.shields.io/badge/ChromaDB-vector%20store-purple?style=flat-square)
+![Streamlit](https://img.shields.io/badge/UI-Streamlit-red?style=flat-square&logo=streamlit)
+![Ollama](https://img.shields.io/badge/Runtime-Ollama-black?style=flat-square)
+![ChromaDB](https://img.shields.io/badge/Vector%20Store-ChromaDB-purple?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
 
 ---
 
-## How It Works
+## Why fully local?
+
+Most RAG demos call OpenAI, Gemini, or Anthropic for embeddings or generation. That's fine for tutorials — not fine for enterprise document Q&A where the documents themselves are sensitive (contracts, financial statements, medical records, logistics manifests). I built this with the constraint that **the entire pipeline runs on a single machine** with no outbound network calls once models are pulled. Data governance is a design driver here, not an afterthought.
+
+---
+
+## Architecture
 
 ```
-PDF Upload
-   │
-   ▼
-MarkItDown            →  Extracts text from PDF into clean markdown
-   │
-   ▼
-Chunker               →  Splits text into 500-word overlapping chunks
-   │
-   ▼
-bge-small-en-v1.5     →  Embeds each chunk into a 384-dim vector (ONNX, free, no API)
-   │
-   ▼
-ChromaDB              →  Stores vectors, retrieves top-3 by cosine similarity
-   │
-   ▼
-Gemini 1.5 Flash      →  Generates an answer grounded in retrieved context
-   │
-   ▼
-Streamlit UI          →  Displays answer with collapsible source chunks
+                INDEXING PIPELINE                              QUERY PIPELINE
+                (runs once per PDF)                            (runs per question)
+
+                ┌────────────────┐                             ┌────────────────┐
+                │  PDF Document  │                             │ User Question  │
+                └───────┬────────┘                             └───────┬────────┘
+                        │                                              │
+                        ▼                                              │
+            ┌───────────────────────┐                                  │
+            │ 1 · MarkItDown Parser │                                  │
+            │   PDF → Markdown      │                                  │
+            │   preserves structure │                                  │
+            └───────────┬───────────┘                                  │
+                        ▼                                              │
+            ┌───────────────────────┐                                  │
+            │ 2 · Semantic Chunker  │                                  │
+            │   splits on meaning,  │                                  │
+            │   not fixed size      │                                  │
+            └───────────┬───────────┘                                  │
+                        ▼                                              │
+            ┌───────────────────────┐                                  │
+            │ 3 · Pydantic Models   │                                  │
+            │   validate at every   │                                  │
+            │   stage boundary      │                                  │
+            └───────────┬───────────┘                                  │
+                        ▼                                              ▼
+            ┌──────────────────────────────────────────────────────────┐
+            │  4 · qwen3-embedding:0.6b  (served via Ollama, local)    │
+            │      same model embeds both chunks and queries           │
+            └──────────────────────────┬───────────────────────────────┘
+                                       ▼
+            ┌──────────────────────────────────────────────────────────┐
+            │  5 · ChromaDB                                            │
+            │      cosine similarity · top-2 retrieval                 │
+            └──────────────────────────┬───────────────────────────────┘
+                                       ▼
+            ┌──────────────────────────────────────────────────────────┐
+            │  6 · gpt-oss:20b  (served via Ollama, local)             │
+            │      generates a grounded answer from retrieved context  │
+            └──────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Features
+## Design decisions and why
 
-- **Completely free** — Gemini API has a free tier, no credit card needed
-- **No installation** — deploy to Streamlit Community Cloud in minutes
-- **Free embeddings** — `bge-small-en-v1.5` runs on CPU via ONNX, no cost
-- **Source transparency** — every answer shows the exact chunks the model used
-- **Chat interface** — persistent Q&A history within a session
-- **Clean UI** — dark-themed Streamlit app with sidebar document management
-
----
-
-## Tech Stack
-
-| Component       | Tool                                      |
-|-----------------|-------------------------------------------|
-| Frontend        | Streamlit                                 |
-| PDF Parser      | MarkItDown (Microsoft)                    |
-| Embeddings      | `bge-small-en-v1.5` via fastembed (ONNX)  |
-| Vector Store    | ChromaDB (in-memory, cosine similarity)   |
-| LLM             | Gemini 1.5 Flash (free tier)              |
-| Data Validation | Pydantic v2                               |
+| Component | Choice | Reasoning |
+|---|---|---|
+| **PDF parser** | `MarkItDown` | Most projects use `PyPDF` / `pdfplumber` — these give raw text and lose document structure (headings, tables, lists). MarkItDown converts to Markdown, preserving structure that helps the LLM ground answers. |
+| **Chunker** | Semantic chunking | Fixed-size chunking is easy but constantly cuts sentences mid-thought. Semantic chunking measures embedding similarity between adjacent sentences and breaks on topic shifts — chunks remain coherent. |
+| **Validation** | Pydantic models at every stage boundary | In a multi-stage pipeline, silent type errors propagate downstream and corrupt retrieval. Pydantic fails loud at the boundary where the error actually originates. |
+| **Embeddings** | `qwen3-embedding:0.6b` via Ollama | Top-tier on the MTEB leaderboard for its size class, and small enough (0.6B parameters) to run comfortably on consumer hardware. Same model embeds both indexed chunks and queries for vector-space consistency. |
+| **Vector store** | ChromaDB, top-**2** cosine retrieval | I tested top-5 first. Extra chunks introduced irrelevant context that distracted the LLM. Two highly relevant chunks consistently beat five mixed ones for grounded answers. |
+| **LLM** | `gpt-oss:20b` via Ollama | Open-source, runs locally on Apple Silicon / consumer GPUs, surprisingly competitive with closed-source models for grounded Q&A where retrieval already constrains the answer. |
+| **UI** | Streamlit | Fastest way to ship a chat-style interface in Python with file upload, session state, and source-context expanders out of the box. |
 
 ---
 
-## Deploy (free, public URL)
+## What I learned
 
-**Streamlit Community Cloud:**
-1. Fork this repo
-2. Go to [share.streamlit.io](https://share.streamlit.io) → New app → select your fork
-3. Advanced settings → Secrets → add:
-   ```toml
-   GOOGLE_API_KEY = "AIza..."
-   ```
-4. Deploy — get a public URL in ~2 minutes
-
-Get a free Gemini API key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) — no credit card required.
+- **In RAG, retrieval quality dominates generation quality.** You can swap one LLM for another and barely move the needle on answer quality. Tune chunking and the system improves dramatically. Most iteration time went into chunking, not prompting.
+- **Same embedding model for chunks and queries is non-negotiable.** Cross-model similarity is meaningless — embeddings only compare within the same vector space.
+- **Fail loud at boundaries.** Adding Pydantic validation between parser → chunker → store caught bugs that would otherwise have silently produced wrong answers.
 
 ---
 
-## Run Locally
+## Setup
 
-**Prerequisites:** Python 3.10+
+**Prerequisites**
+
+- Python 3.10+
+- [Ollama](https://ollama.com/) installed and running
+
+**Install models**
 
 ```bash
-git clone https://github.com/Rahulroy5/rag-assistant.git
-cd rag-assistant
+ollama pull qwen3-embedding:0.6b
+ollama pull gpt-oss:20b
+```
+
+> `gpt-oss:20b` is ~13 GB and needs ~16 GB RAM. On lower-memory machines, swap to a smaller model (e.g. `llama3.1:8b`) by editing `LLM_MODEL` in `rag/llm.py`.
+
+**Install Python dependencies**
+
+```bash
 pip install -r requirements.txt
+```
+
+**Run**
+
+```bash
 streamlit run app.py
 ```
 
-Open **http://localhost:8501**, enter your Gemini API key in the sidebar, upload a PDF, and start asking questions.
+Open `http://localhost:8501`, upload a PDF, and ask questions.
 
 ---
 
-## Project Structure
+## Project structure
 
 ```
-rag-assistant/
-├── app.py              # Streamlit UI — upload, chat, API key input, session state
-├── models.py           # Pydantic schemas (Chunk, QueryResult)
-├── requirements.txt
-├── render.yaml         # Render deployment config
-├── Dockerfile          # HuggingFace Spaces deployment config
-└── rag/
-    ├── parser.py       # MarkItDown: PDF → markdown text
-    ├── chunker.py      # Split text into overlapping word chunks
-    ├── store.py        # ChromaDB: embed, store, and retrieve chunks
-    └── llm.py          # Gemini: generate answer from retrieved context
+.
+├── app.py                  # Streamlit UI and orchestration
+├── models.py               # Pydantic models — Chunk, RetrievedContext, QueryResult
+├── rag/
+│   ├── parser.py           # MarkItDown PDF → Markdown
+│   ├── chunker.py          # Semantic chunking on embedding-similarity breaks
+│   ├── store.py            # ChromaDB + Ollama embedder + top-2 retrieval
+│   └── llm.py              # gpt-oss:20b grounded generation
+└── requirements.txt
 ```
 
 ---
 
 ## Limitations
 
-- Scanned / image-based PDFs are not supported (no OCR)
+- Scanned / image-only PDFs are not supported (no OCR upstream of the parser)
 - In-memory ChromaDB — indexed documents reset on app restart
+
+---
+
+## License
+
+MIT

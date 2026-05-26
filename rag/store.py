@@ -1,25 +1,23 @@
 from typing import List
 
 import chromadb
+import ollama
 from chromadb import EmbeddingFunction, Embeddings
-from fastembed import TextEmbedding
 
 from models import Chunk
 
-_embedder: TextEmbedding | None = None
+EMBEDDING_MODEL = "qwen3-embedding:0.6b"
 
 
-def _get_embedder() -> TextEmbedding:
-    global _embedder
-    if _embedder is None:
-        _embedder = TextEmbedding("BAAI/bge-small-en-v1.5")
-    return _embedder
+class OllamaEmbedder(EmbeddingFunction):
+    """Embeds text locally using qwen3-embedding:0.6b served by Ollama.
 
+    Chosen over cloud-hosted embeddings so the full pipeline stays local —
+    a hard requirement for any enterprise document Q&A use case.
+    """
 
-class LocalEmbedder(EmbeddingFunction):
     def __call__(self, input: List[str]) -> Embeddings:
-        model = _get_embedder()
-        return [v.tolist() for v in model.embed(input)]
+        return [ollama.embeddings(model=EMBEDDING_MODEL, prompt=text)["embedding"] for text in input]
 
 
 def get_fresh_collection(client: chromadb.Client, collection_name: str = "rag_docs"):
@@ -29,7 +27,7 @@ def get_fresh_collection(client: chromadb.Client, collection_name: str = "rag_do
         pass
     return client.create_collection(
         name=collection_name,
-        embedding_function=LocalEmbedder(),
+        embedding_function=OllamaEmbedder(),
         metadata={"hnsw:space": "cosine"},
     )
 
@@ -42,6 +40,11 @@ def add_chunks(collection, chunks: List[Chunk]) -> None:
     )
 
 
-def retrieve(collection, question: str, n_results: int = 3) -> List[str]:
+def retrieve(collection, question: str, n_results: int = 2) -> List[str]:
+    """Top-2 cosine retrieval.
+
+    Tested top-5 first — extra chunks introduced noise that distracted the LLM.
+    Two highly relevant chunks consistently beat five mixed ones.
+    """
     results = collection.query(query_texts=[question], n_results=n_results)
     return results["documents"][0]

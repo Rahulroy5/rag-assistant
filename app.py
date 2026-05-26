@@ -5,8 +5,6 @@ import tempfile
 import chromadb
 import streamlit as st
 
-ANTHROPIC_API_KEY_ENV = os.getenv("GOOGLE_API_KEY", "")
-
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from rag.chunker import chunk_text
@@ -178,23 +176,10 @@ with st.sidebar:
         <div style='font-size:2.2rem;'>📄</div>
         <div style='font-size:1.1rem; font-weight:700; color:#e6edf3;'>PDF Q&A Assistant</div>
         <div style='font-size:0.78rem; color:#8b949e; margin-top:0.2rem;'>
-            Powered by Claude · Open-source
+            Fully local · Open-source
         </div>
     </div>
     """, unsafe_allow_html=True)
-
-    st.markdown("---")
-    st.markdown("<div style='color:#8b949e; font-size:0.8rem; font-weight:600; margin-bottom:0.5rem;'>GOOGLE GEMINI API KEY</div>", unsafe_allow_html=True)
-    api_key_input = st.text_input(
-        "API Key",
-        value=ANTHROPIC_API_KEY_ENV,
-        type="password",
-        placeholder="AIza...",
-        label_visibility="collapsed",
-    )
-    api_key = api_key_input.strip()
-    if not api_key:
-        st.warning("Enter your free [Gemini API key](https://aistudio.google.com/apikey) to get started.", icon="🔑")
 
     st.markdown("---")
     st.markdown("<div style='color:#8b949e; font-size:0.8rem; font-weight:600; margin-bottom:0.5rem;'>UPLOAD DOCUMENT</div>", unsafe_allow_html=True)
@@ -249,9 +234,10 @@ with st.sidebar:
     st.markdown("<div style='color:#8b949e; font-size:0.8rem; font-weight:600; margin-bottom:0.6rem;'>MODELS</div>", unsafe_allow_html=True)
     st.markdown("""
     <div>
-        <span class='model-badge'>🔍 bge-small-en-v1.5</span>
-        <span class='model-badge'>🧠 Gemini 1.5 Flash</span>
+        <span class='model-badge'>🔍 qwen3-embedding:0.6b</span>
+        <span class='model-badge'>🧠 gpt-oss:20b</span>
         <span class='model-badge'>🗄️ ChromaDB</span>
+        <span class='model-badge'>⚙️ Ollama</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -261,11 +247,11 @@ if not st.session_state.collection:
     st.markdown("""
     <div class='welcome-card'>
         <h2>Ask anything about your PDF</h2>
-        <p>Upload any PDF and ask questions in plain English. Powered by Claude — no setup, no install, works instantly in your browser.</p>
+        <p>Upload any PDF and ask questions in plain English. Fully local, fully open-source — your documents never leave your machine.</p>
         <br/>
         <div class='step'>
             <div class='step-num'>1</div>
-            <div class='step-text'>Enter your Anthropic API key in the sidebar</div>
+            <div class='step-text'>Make sure Ollama is running with qwen3-embedding:0.6b and gpt-oss:20b pulled</div>
         </div>
         <div class='step'>
             <div class='step-num'>2</div>
@@ -273,7 +259,7 @@ if not st.session_state.collection:
         </div>
         <div class='step'>
             <div class='step-num'>3</div>
-            <div class='step-text'>Type your question and get an instant answer</div>
+            <div class='step-text'>Type your question and get a grounded answer</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -291,10 +277,6 @@ else:
 
     # Chat input
     if question := st.chat_input("Ask a question about your document..."):
-        if not api_key:
-            st.error("Please enter your Anthropic API key in the sidebar first.")
-            st.stop()
-
         # Show user message
         with st.chat_message("user", avatar="🧑"):
             st.markdown(question)
@@ -305,7 +287,7 @@ else:
             with st.spinner("Searching document and generating answer..."):
                 try:
                     context_chunks = retrieve(st.session_state.collection, question)
-                    answer = generate_answer(question, context_chunks, api_key=api_key)
+                    answer = generate_answer(question, context_chunks)
                 except Exception as e:
                     answer = f"Error: {e}"
                     context_chunks = []
