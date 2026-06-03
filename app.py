@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from rag.chunker import chunk_text
 from rag.llm import generate_answer
 from rag.parser import parse_pdf
-from rag.store import add_chunks, get_fresh_collection, retrieve
+from rag.store import add_chunks, get_fresh_store, retrieve
 
 st.set_page_config(
     page_title="PDF Q&A Assistant",
@@ -160,7 +160,7 @@ def get_chroma_client():
 client = get_chroma_client()
 
 for key, default in [
-    ("collection", None),
+    ("store", None),
     ("pdf_name", None),
     ("chunk_count", 0),
     ("messages", []),
@@ -204,10 +204,10 @@ with st.sidebar:
                     st.error("No text found. Scanned/image PDFs are not supported.")
                 else:
                     chunks = chunk_text(text, source=uploaded_file.name)
-                    collection = get_fresh_collection(client)
-                    add_chunks(collection, chunks)
+                    store = get_fresh_store(client)
+                    add_chunks(store, chunks)
 
-                    st.session_state.collection = collection
+                    st.session_state.store = store
                     st.session_state.pdf_name = uploaded_file.name
                     st.session_state.chunk_count = len(chunks)
                     st.session_state.messages = []
@@ -224,7 +224,7 @@ with st.sidebar:
         """, unsafe_allow_html=True)
 
         if st.button("Clear & Upload New"):
-            st.session_state.collection = None
+            st.session_state.store = None
             st.session_state.pdf_name = None
             st.session_state.chunk_count = 0
             st.session_state.messages = []
@@ -243,7 +243,7 @@ with st.sidebar:
 
 
 # ── Main area ─────────────────────────────────────────────────────────────────
-if not st.session_state.collection:
+if not st.session_state.store:
     st.markdown("""
     <div class='welcome-card'>
         <h2>Ask anything about your PDF</h2>
@@ -286,7 +286,7 @@ else:
         with st.chat_message("assistant", avatar="🤖"):
             with st.spinner("Searching document and generating answer..."):
                 try:
-                    context = retrieve(st.session_state.collection, question)
+                    context = retrieve(st.session_state.store, question)
                     result = generate_answer(context)
                     answer = result.answer
                     context_chunks = result.context_chunks

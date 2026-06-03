@@ -51,8 +51,9 @@ Most RAG demos call OpenAI, Gemini, or Anthropic for embeddings or generation. T
             └──────────────────────────┬───────────────────────────────┘
                                        ▼
             ┌──────────────────────────────────────────────────────────┐
-            │  5 · ChromaDB                                            │
-            │      cosine similarity · top-2 retrieval                 │
+            │  5 · Hybrid Retrieval                                    │
+            │      ChromaDB cosine (dense) + BM25 (sparse)             │
+            │      merged with Reciprocal Rank Fusion · top-2          │
             └──────────────────────────┬───────────────────────────────┘
                                        ▼
             ┌──────────────────────────────────────────────────────────┐
@@ -71,7 +72,7 @@ Most RAG demos call OpenAI, Gemini, or Anthropic for embeddings or generation. T
 | **Chunker** | Semantic chunking | Fixed-size chunking is easy but constantly cuts sentences mid-thought. Semantic chunking measures embedding similarity between adjacent sentences and breaks on topic shifts — chunks remain coherent. |
 | **Validation** | Pydantic models at every stage boundary | In a multi-stage pipeline, silent type errors propagate downstream and corrupt retrieval. Pydantic fails loud at the boundary where the error actually originates. |
 | **Embeddings** | `qwen3-embedding:0.6b` via Ollama | Top-tier on the MTEB leaderboard for its size class, and small enough (0.6B parameters) to run comfortably on consumer hardware. Same model embeds both indexed chunks and queries for vector-space consistency. |
-| **Vector store** | ChromaDB, top-**2** cosine retrieval | I tested top-5 first. Extra chunks introduced irrelevant context that distracted the LLM. Two highly relevant chunks consistently beat five mixed ones for grounded answers. |
+| **Vector store** | ChromaDB (dense) + BM25 (sparse), merged with RRF | Dense retrieval misses exact keywords (acronyms, codes, names). BM25 catches them but has no semantic understanding. Reciprocal Rank Fusion combines both ranked lists — chunks that score highly in both get boosted. Final top-2 after merging. |
 | **LLM** | `gpt-oss:20b` via Ollama | Open-source, runs locally on Apple Silicon / consumer GPUs, surprisingly competitive with closed-source models for grounded Q&A where retrieval already constrains the answer. |
 | **UI** | Streamlit | Fastest way to ship a chat-style interface in Python with file upload, session state, and source-context expanders out of the box. |
 
@@ -126,7 +127,7 @@ Open `http://localhost:8501`, upload a PDF, and ask questions.
 ├── rag/
 │   ├── parser.py           # MarkItDown PDF → Markdown
 │   ├── chunker.py          # Semantic chunking on embedding-similarity breaks
-│   ├── store.py            # ChromaDB + Ollama embedder + top-2 retrieval
+│   ├── store.py            # HybridStore: ChromaDB (dense) + BM25 (sparse) + RRF merge
 │   └── llm.py              # gpt-oss:20b grounded generation
 ├── Dockerfile              # Container image for self-hosted deployment
 ├── render.yaml             # Render.com service configuration
