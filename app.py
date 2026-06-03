@@ -286,8 +286,10 @@ else:
         with st.chat_message("assistant", avatar="🤖"):
             with st.spinner("Searching document and generating answer..."):
                 try:
-                    context_chunks = retrieve(st.session_state.collection, question)
-                    answer = generate_answer(question, context_chunks)
+                    context = retrieve(st.session_state.collection, question)
+                    result = generate_answer(context)
+                    answer = result.answer
+                    context_chunks = result.context_chunks
                 except Exception as e:
                     answer = f"Error: {e}"
                     context_chunks = []

@@ -4,7 +4,7 @@ import chromadb
 import ollama
 from chromadb import EmbeddingFunction, Embeddings
 
-from models import Chunk
+from models import Chunk, RetrievedContext
 
 EMBEDDING_MODEL = "qwen3-embedding:0.6b"
 
@@ -40,11 +40,11 @@ def add_chunks(collection, chunks: List[Chunk]) -> None:
     )
 
 
-def retrieve(collection, question: str, n_results: int = 2) -> List[str]:
+def retrieve(collection, question: str, n_results: int = 2) -> RetrievedContext:
     """Top-2 cosine retrieval.
 
     Tested top-5 first — extra chunks introduced noise that distracted the LLM.
     Two highly relevant chunks consistently beat five mixed ones.
     """
     results = collection.query(query_texts=[question], n_results=n_results)
-    return results["documents"][0]
+    return RetrievedContext(question=question, chunks=results["documents"][0])

@@ -1,5 +1,7 @@
 import ollama
 
+from models import QueryResult, RetrievedContext
+
 LLM_MODEL = "gpt-oss:20b"
 
 SYSTEM_PROMPT = (
@@ -11,21 +13,24 @@ SYSTEM_PROMPT = (
 
 
 def generate_answer(
-    question: str,
-    context_chunks: list[str],
+    context: RetrievedContext,
     model: str = LLM_MODEL,
-) -> str:
+) -> QueryResult:
     """Generate a grounded answer using gpt-oss:20b served locally via Ollama.
 
     Open-source, runs fully local, no API keys, no data leaves the machine.
     """
-    context = "\n\n---\n\n".join(context_chunks)
+    joined_context = "\n\n---\n\n".join(context.chunks)
 
     response = ollama.chat(
         model=model,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {question}"},
+            {"role": "user", "content": f"Context:\n{joined_context}\n\nQuestion: {context.question}"},
         ],
     )
-    return response["message"]["content"]
+    return QueryResult(
+        question=context.question,
+        context_chunks=context.chunks,
+        answer=response["message"]["content"],
+    )

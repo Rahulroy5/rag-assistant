@@ -128,6 +128,8 @@ Open `http://localhost:8501`, upload a PDF, and ask questions.
 │   ├── chunker.py          # Semantic chunking on embedding-similarity breaks
 │   ├── store.py            # ChromaDB + Ollama embedder + top-2 retrieval
 │   └── llm.py              # gpt-oss:20b grounded generation
+├── Dockerfile              # Container image for self-hosted deployment
+├── render.yaml             # Render.com service configuration
 └── requirements.txt
 ```
 
