@@ -63,7 +63,7 @@ def _rrf_merge(dense: list[str], sparse: list[str], top_n: int) -> list[str]:
     return sorted(scores, key=lambda d: scores[d], reverse=True)[:top_n]
 
 
-def retrieve(store: HybridStore, question: str, n_results: int = 2) -> RetrievedContext:
+def retrieve(store: HybridStore, question: str, n_results: int = 5) -> RetrievedContext:
     """Hybrid retrieval: dense (ChromaDB cosine) + sparse (BM25), merged with RRF.
 
     Each retriever fetches more candidates than needed; RRF combines the ranked

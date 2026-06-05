@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from rag.chunker import chunk_text
 from rag.llm import generate_answer
 from rag.parser import parse_pdf
+from rag.reranker import rerank
 from rag.store import add_chunks, get_fresh_store, retrieve
 
 st.set_page_config(
@@ -286,7 +287,7 @@ else:
         with st.chat_message("assistant", avatar="🤖"):
             with st.spinner("Searching document and generating answer..."):
                 try:
-                    context = retrieve(st.session_state.store, question)
+                    context = rerank(retrieve(st.session_state.store, question))
                     result = generate_answer(context)
                     answer = result.answer
                     context_chunks = result.context_chunks
