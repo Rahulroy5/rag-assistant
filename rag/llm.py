@@ -1,15 +1,19 @@
+from pathlib import Path
+
 import ollama
+import yaml
 
 from models import QueryResult, RetrievedContext
 
 LLM_MODEL = "gpt-oss:20b"
 
-SYSTEM_PROMPT = (
-    "You are a precise Q&A assistant. Answer the user's question using ONLY "
-    "the provided context. If the answer is not in the context, say: "
-    "'I don't have enough information in this document to answer that.' "
-    "Be concise and clear."
-)
+_CONFIG_PATH = Path(__file__).parent.parent / "config" / "prompts.yaml"
+
+def _load_prompts() -> dict:
+    with open(_CONFIG_PATH) as f:
+        return yaml.safe_load(f)["prompts"]
+
+_prompts = _load_prompts()
 
 
 def generate_answer(
@@ -25,8 +29,11 @@ def generate_answer(
     response = ollama.chat(
         model=model,
         messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": f"Context:\n{joined_context}\n\nQuestion: {context.question}"},
+            {"role": "system", "content": _prompts["system"]},
+            {"role": "user", "content": _prompts["user_template"].format(
+                context=joined_context,
+                question=context.question,
+            )},
         ],
     )
     return QueryResult(

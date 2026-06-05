@@ -131,6 +131,8 @@ Open `http://localhost:8501`, upload a PDF, and ask questions.
 .
 ├── app.py                  # Streamlit UI and orchestration
 ├── models.py               # Pydantic models — Chunk, RetrievedContext, QueryResult
+├── config/
+│   └── prompts.yaml        # Versioned prompt config (system prompt + user template)
 ├── rag/
 │   ├── parser.py           # MarkItDown PDF → Markdown
 │   ├── chunker.py          # Semantic chunking on embedding-similarity breaks
